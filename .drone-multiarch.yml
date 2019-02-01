@@ -1,0 +1,35 @@
+kind: pipeline
+name: amd64
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+  - name: build
+    image: golang:1.11
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    commands:
+      - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - mkdir -p $GOPATH/src/github.com/lrills/helm-unittest/
+      - cp -r ./ $GOPATH/src/github.com/lrills/helm-unittest/
+      - cd $GOPATH/src/github.com/lrills/helm-unittest/
+      - dep ensure
+      - make dist
+  - name: github_binary_release
+    image: plugins/github-release:linux-amd64
+    settings:
+      api_key:
+        from_secret: github_token
+      files:
+        - _dist/*
+      checksum:
+        - sha256
+    when:
+      event: tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
